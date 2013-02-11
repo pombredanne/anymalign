@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 # Copyright 2008, 2009, 2010, 2011 Adrien Lardilleux
@@ -544,6 +544,18 @@ def set_proba(inputFile, inputDict, writer):
         of bytes), values are dictionaries which keys are alignment hashes and
         values are integer frequencies.
     -- writer: {Plain,Moses,HTML,TMX}Writer
+
+    NOTE of set_proba()
+    # INPUT
+    #   lines in inputFile
+    #       :: (alignmented_phrase_in_one_lang <TAB>)+ lexical_weight
+    #   inputDict
+    #       :: { len(alignments) : { hash(alignments) : freq_of_alignment } }
+    # OUTPUT
+    #   lines in writer
+    #       :: (phrase_in_one_lang <TAB>)+ lexical_weight        \
+    #          ( p(this_alignment | phrase_in_one_lang) <SPACE>)+ \
+    #          freq_of_alignment <EOL>
     """
     nbAlignments = 0
     # Sort: read inputFile once to determine where each line begins
@@ -557,6 +569,8 @@ def set_proba(inputFile, inputDict, writer):
         offsetsByFreq.setdefault(freq, []).append(offset)
         offset += len(line)
     inputDict.clear()   # Release memory
+    # offsetsByFreq
+    #   <= { freq : [ offsets_in_inputFile ] }
     
     message("\r%i alignments\n" % nbAlignments)
     if not nbAlignments:
@@ -580,6 +594,10 @@ def set_proba(inputFile, inputDict, writer):
         compressedFile.close()
         inputFile.close()   # Delete temporary input file
         offsetsByFreq.clear()
+        # compressedFile.lines
+        #   <= [ "alignment <TAB> lw <TAB> freq_as_hex" ]
+        #   at decrasing order of freq.
+        # compressedFile.rewind
 
         message("\rComputing conditional probabilities...\n")
         nextPercentage = Progression(nbAlignments).next
@@ -600,6 +618,11 @@ def set_proba(inputFile, inputDict, writer):
                 counts[phraseHash] = counts.get(phraseHash, 0) + freq
             nextPercentage()
         compressedFile.close()
+        # nbLanguages
+        #   <= num of <TAB> split columns in alignment
+        # phraseFreq
+        #   <= [ langId : { hash(phrase) : sum_of_freq } ]
+        # compressedFile.rewind
         
         # Output alignments
         tmpFile.seek(0)
@@ -615,6 +638,9 @@ def set_proba(inputFile, inputDict, writer):
                 probas = ' '.join(["%f" % (1. * freq / counts[hash(phrase)])
                                    for phrase, counts
                                    in zip(alignment, phraseFreq)])
+                # probas = ' '.join(
+                #   [ langId : freq_of_this_alignment / occurance_of_phrase ]
+                #  )
                 writer.write("%s\t%s\t%s\t%i\n" % (alignmentStr, lexWeights,
                                                    probas, freq))
                 nextPercentage()
@@ -656,6 +682,17 @@ def merge(inputFilenames, writer):
     field in decreasing order. The <translationProbabilities> are updated
     accordingly (one float per language).
     
+    NOTE of merge()
+    # INPUT
+    #   lines in input_files
+    #       :: (phrase_in_one_lang <TAB>)+ lexical_weight        \
+    #          ( p(this_alignment | phrase_in_one_lang) <SPACE>)+ \
+    #          freq_of_alignment <EOL>
+    # OUTPUT
+    #   lines in writes
+    #       :: same format, where
+    #           trans prob, freq_of_alignment are re-calculated
+    #           lexical_weight are that of first occurance
     """
     files = []
     counts = {} # Absolute frequencies of alignments
@@ -669,6 +706,8 @@ def merge(inputFilenames, writer):
         # Sum up absolute frequencies for alignments
         for inputFile in files:
             for line in inputFile:
+            # line ::
+            #   alignment <TAB> lw <TAB> trans prob <TAB> freq <EOL>
                 alignment_lw, _, freq = line.rsplit('\t', 2)
                 alignment = alignment_lw.rsplit('\t', 1)[0]
                 bucket = counts.setdefault(len(alignment), {})
@@ -679,6 +718,12 @@ def merge(inputFilenames, writer):
                     print >> weightedAlignmentFile, alignment_lw
                 else:
                     bucket[alignmentHash] = previousFreq + int(freq)
+        # weightedAlignmentFile.lines
+        #   <= "\t".join( [ alignment, lw ] )
+        # write alignment <TAB> lw to temp line
+        # counts
+        #   <= { len(alignment) : { hash(alignment) : total_freq(alignment) } }
+        # NOTE translation probabilities will be re-calculated in set_proba
         
         weightedAlignmentFile.seek(0)
         set_proba(weightedAlignmentFile, counts, writer)
@@ -845,6 +890,13 @@ class Aligner:
                            "Input files have different number of lines"
                 self.offsets.append(optimum_array(fileOffsets))
                 del fileOffsets
+                # assert
+                #   all files have same num of lines
+                #   all lines have same num of <TAB>split columns
+                # self.nbLanguages
+                #   <= num of <TAB> split columns
+                # self.offsets
+                #   <= [ fileId : [ lineId: lineOffset ] ]
             message("Input corpus: %i languages, %i lines\n" %
                     (self.nbLanguages, nbLines))
             
@@ -856,6 +908,8 @@ class Aligner:
             ncf = parse_field_numbers(discontiguousFields, self.nbLanguages)
             self.contiguousFields = [(i + 1 not in ncf)
                                      for i in xrange(self.nbLanguages)]
+            # self.contiguousFields
+            #   <=
 
             if timeout < 0:
                 timeout = None
@@ -878,6 +932,8 @@ class Aligner:
                              xrange(int(math.ceil(1. * len(lines) /
                                                   nbCorpToDo)))]
                 selection.sort()    # Speed up disk access
+                # selection
+                #   <= [ random lineId ]
                 self.set_corpus(selection)
                 self.run(timeout, nbNewAlignments)
             set_proba(self.weightedAlignmentFile, self.counts, writer)
@@ -893,6 +949,32 @@ class Aligner:
 
         -- lines: list(int)
             The line numbers. These are indices of arrays in self.offsets.
+
+        NOTE of Aligner.set_corpus()
+        INPUT:
+        # self.files
+        # self.offsets
+        # lines
+        #   :: [ lineId: lineNum ]
+
+        OUTPUT:
+        # self.corpus
+        #   <= [ lineId: [ wordId ] ]
+        # self.allWords
+        #   <= [ wordId: word ]
+        # self.wordLanguages
+        #   <= [ wordId: lang_id]
+        # self.corpus
+        #   <= [ lineId: [ wordId for each word] ]
+        # self.wordFreq
+        #   <= [ wordId: freq of word ] # num of lines occured in
+
+        # with `-i` switch
+        # self.allNgrams
+        #   <= [ (n-2) : [ ngramId: (wordId) ] ]
+        # self.ngramCorpora
+        #   <= [ (n-2) : [ lineId : { ngramId } ] ]
+
         """
         self.corpus = [[] for _ in lines]
         self.allWords, self.wordLanguages = [], []
@@ -921,6 +1003,17 @@ class Aligner:
         for line in self.corpus:
             for wordId in set(line):
                 self.wordFreq[wordId] += 1
+        # self.allWords
+        #   <= [ wordId: word ]
+        # self.wordLanguages
+        #   <= [ wordId: lang_id]
+        # self.corpus
+        #   <= [ lineId: [ wordId for each word] ]
+        # self.wordFreq
+        #   <= [ wordId: freq of word ] # num of lines occured in
+        # allWordIds
+        #   <= [ lang_id : { word: wordId } ]
+        # XXX how to preserve words between #set_corpus?
 
         # Add discontinuity delimiter
         self.allWords.append(self.delimiter)
@@ -980,10 +1073,22 @@ class Aligner:
                         ngramSentence.add(ngramId)
             for n in ngramRange:
                 self.ngramCorpora[n-2].append(sorted(ngramSentences[n-2]))
+        # self.allNgrams
+        #   <= [ (num_of_grams-2) : [ ngramId: (wordId) ] ]
+        #   ngramId are assigned spanning all languages
+        # self.ngramCorpora
+        #   <= [ (len_of_grams-2) : [ { ngramId } ] ]
+        # allNgramIds
+        #   <= [ (len_of_grams-2) : { ngram : ngramId } ]
+        # ngramSentences
+        #   <= [ (len_of_grams-2) : { ngramId } ]
+        # sentences
+        #   <= [ languageId: [ wordId ] ]
 
 
     def main_distribution(self, k):
         """Used to optimize random sampling."""
+        # NOTE not -1/xxx as in paper, but it's ok, as it will always be minus, and not affecting generalized distribution
         return 1. / (k * math.log(1 - 1. * k / (len(self.corpus) + 1)))
         #return 1. / (math.log(1 - 1. * k / (len(self.corpus) + 1)))
         #return 1
@@ -1121,6 +1226,8 @@ class Aligner:
         original corpus. Abslolute frequencies are kept in memory
         (self.counts), using <weight> as unit. All words are written
         in hexadecimal.
+
+        NOTE of Aligner#align()
         
         """
         
@@ -1129,6 +1236,7 @@ class Aligner:
         ngramRange = range(2, self.indexN + 1)
 
         vec_word = {}   # {tuple(int): set(int)}
+        # { (lineId) : { wordId } }
         vw_setdefault = vec_word.setdefault
         
         for n in xrange(1, self.indexN + 1):
@@ -1136,6 +1244,7 @@ class Aligner:
             
             if n == 1:
                 word_ap = {}
+                # <= { word: lineId }
                 wa_setdefault = word_ap.setdefault
                 for lineId in lineIds:
                     for word in corpus[lineId]:
@@ -1155,7 +1264,8 @@ class Aligner:
                 for ngram, linesAp in ngram_ap.iteritems():
                     vw_setdefault(tuple(linesAp), set()
                                   ).update(self.allNgrams[n-2][ngram])
-
+            # union words of ngrams
+            # will affect (linesAp) that contains words, but are not maximum set
             # Above part was changed with new option "-i", rest is identical
             
 
