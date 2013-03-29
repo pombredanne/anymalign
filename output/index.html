@@ -1,0 +1,58 @@
+<h1>HOW <strong>anymalign</strong> works</h1>
+
+<ol>
+<li><p>load <code>N</code> lines of multi-lang corpura.</p></li>
+<li><p>randomly take a subcorpura of <code>k</code> lines by sampling.</p>
+
+<pre><code>                                       C
+p( size_of_subcorpura = k ) = --------------------
+                               k * ln( 1 - k / N)
+</code></pre>
+
+<p>each line is <em>equal</em> in sampling.</p>
+
+<p>suppose we took a subcorpura of 3 lines from bilingual data.</p>
+
+<pre><code>a1 a2 a3  | b1 b2
+   a2 a3  |    b2
+a1        | b1 b2
+</code></pre></li>
+<li><p>scan subcorpura and obtain a dictionary <code>{ word : [ line it occured in ] }</code></p>
+
+<pre><code>{
+    a1 : [1,3]       ,
+    a2 : [1,2]       ,
+    a3 : [1,2]       ,
+    b1 : [1,3]       ,
+    b2 : [1,2,3]     ,
+}
+</code></pre></li>
+<li><p>reverse the dictionary in step2, getting <code>{ [ lineId] : { word } }</code></p>
+
+<pre><code>{
+    [1,2]  : { a2, a3 } ,
+    [1,3]  : { a1, b1 } ,
+    [1,2,3]: { b2 }     ,
+}
+</code></pre>
+
+<p><em>note</em> : with <code>-i</code> switch, #3-4 would be slightly different.</p></li>
+<li><ul>
+<li>for each set of lines, and its corresponding <code>wordSet</code> :  ( <code>{ [1,3]  : { a1, b1 } }</code> )</li>
+</ul>
+
+<ul>
+<li>for each line in set: ( <code>line 1</code> )</li>
+<li><p>for each word in the line</p>
+
+<p>if word is in <code>wordSet</code>, add word to <code>perfect phrase</code></p>
+
+<p>else, add word to <code>complementary phrase</code></p>
+
+<p>→ <code>perfect phrase</code> : <code>a1 &lt;=&gt; b1</code></p>
+
+<p>→ <code>complementary phrase</code> : <code>a2,a3 &lt;=&gt; b2</code></p>
+
+<p>are 2 alignments we found.</p></li>
+</ul></li>
+</ol>

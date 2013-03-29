@@ -37,7 +37,6 @@ compile '*' do
     else
       raise "what to do with #{item[:extension]} ?"
     end
-    layout "default"
   end
 end
 
@@ -54,5 +53,3 @@ route '*' do
     item.identifier + 'index.html'
   end
 end
-
-layout '*', :haml
