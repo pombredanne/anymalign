@@ -1,4 +1,5 @@
-.sass-cache
-/tmp/*
 tmp/
-/crash.log
+*.beamer.tex
+*.beamer.pdf
+*.outline.tex
+*.outline.pdf
