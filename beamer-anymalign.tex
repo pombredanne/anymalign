@@ -1,0 +1,134 @@
+\input{beamer/header}
+
+\date{2013-04-05} % not \today
+\title{Inside anymalign}
+\author{Caesar, Crassus, Magnus }
+\institute[IPS]{
+  Lepage Lab \\
+  Graduation school of IPS
+}
+
+\begin{document}
+
+\section{Introduction}{
+  \begin{frame}
+    \titlepage
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{workflow of anymalign}
+    \begin{algorithmic}
+      \Repeat
+        \begin{description}
+          \item[sample] randomly pick a small subcorpora
+          \item[dig]    find alignment from subcorpora
+        \end{description}
+      \\
+      \Until
+        \begin{itemize}
+          \item generation rate of new alignments fall below threshold
+          \item OR someone hit Ctrl-C
+        \end{itemize}
+      \\\ \\
+      \Return
+        \begin{itemize}
+          \item translation probability
+          \item lexical weight
+        \end{itemize}
+    \end{algorithmic}
+  \end{frame}
+}
+
+\section{sampling}{
+
+  \begin{frame}
+    \frametitle{Size of subcorpura - Goal}
+    We demand the same cover rate, from subcorpus of different size. \\
+    suppose
+    \begin{description}
+      \item[$C$]     the cover rate
+      \item[$N$]     size of corpus
+      \item[$T$]     num of samples ( aka subcorpus )
+      \item[$p(k)$]  probability that a corpora has size k
+    \end{description}
+    ideally, we have
+    \begin{itemize}
+      \item \inl{T \cdot p(1)} 1-sentence subcorpus covers \inl{N \cdot C} sentences
+      \item \inl{T \cdot p(2)} 2-sentence subcorpus covers \inl{N \cdot C} sentences
+      \item $ ... $
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame} \frametitle{Size of subcorpura - Modelling}
+    After \inl{T \cdot p(k)} k-sentence subcorpus are randomly picked,
+    \\
+    the probability that a particular sentence \em{is not covered} is
+    \\
+    \inl{ ( (1-k/N)^k )^{ T \cdot p(k) } }
+    , which equals to \inl{1-C}
+  \end{frame}
+
+  \begin{frame} \frametitle{Size of subcorpura - Conclusion}
+    From \inl{((1-k/N)^k)^{ T \cdot p(k) } = 1 - C}
+    \\
+    we can obtain \inl{p(k) = \dfrac{ \ln{(1-C)} }{kT \ln{(1-\frac{k}{N})}} }
+    \\
+    OR, simply \inl{p(k) \propto \dfrac{-1}{k \ln{(1-\frac{k}{N})} } }  ( -1 keeps it positive )
+  \end{frame}
+
+}
+
+\section{finding alignments}{
+
+  \begin{frame}
+    \frametitle{Perfect alignment}
+    def:
+    \\
+    perfect alignment:
+    \\
+    word sequences that ex
+    % TODO example with \tabular
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Multilingual to Alingual}
+    remove boundary of input languages temporialy.
+    \\
+    note: same literal from different languages are counted as different words
+    def:
+    perfect alignment:
+    \\
+    word sequences that appears
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Grouping words}
+  \end{frame}
+}
+
+\section{calculation TP,LW}{
+
+  \begin{frame}
+    \frametitle{TP}
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{LW}
+  \end{frame}
+}
+
+\section{copy&paste}{
+  \begin{frame}
+    \frametitle{title}
+    \begin{itemize}
+      \item Hello
+      \item World
+    \end{itemize}
+    \begin{description}
+      \item[a] def-a
+      \item[b] def-b
+    \end{description}
+  \end{frame}
+}
+
+\end{document}

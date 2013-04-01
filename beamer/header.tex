@@ -1,0 +1,27 @@
+\documentclass{beamer}
+\usepackage{graphicx} % graphics
+\usepackage{epsfig} % eps graphics
+\usepackage{hyperref} % urls
+\usepackage{booktabs, caption} % table styling
+\usepackage{xcolor} % table styling
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% code highlight, need python2-pygment
+% \usepackage{minted} % gives strange output
+
+% set fonts
+\usepackage{fontspec}
+\usepackage{xunicode}
+
+% style
+\usetheme{Warsaw}
+\usefonttheme{default}
+\setbeamerfont{title}{size=\huge}
+\setbeamerfont{frametitle}{size=\huge}
+
+% set CJK fonts
+\usepackage{xeCJK}
+\setCJKmainfont{Droid Sans Fallback}
+
+% macro
+\newcommand{\inl}[1]{ \colorbox{blue!15}{$#1$} } % inline math env

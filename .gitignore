@@ -1,4 +1,2 @@
-.sass-cache
-/tmp/*
 tmp/
-/crash.log
+*.pdf
