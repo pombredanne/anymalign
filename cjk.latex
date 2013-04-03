@@ -126,6 +126,7 @@ $endif$
 \author{$for(author)$$author$$sep$ \and $endfor$}
 \date{$date$}
 
+\usepackage{xcolor}
 \usepackage{CJKutf8}
 %\usepackage{xeCJK}
 \begin{document}

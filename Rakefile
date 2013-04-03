@@ -61,7 +61,7 @@ task :tex_beamer => source do
   pairs.each do |beamer,md|
     next if uptodate?(beamer,[md])
     pandoc                    \
-      "-t","beamer+raw_tex",  \
+      "-t","beamer+raw_tex+latex_macros",  \
       "--template=cjk",       \
       md,"-o",beamer
   end

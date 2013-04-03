@@ -2,6 +2,8 @@
 % john doe
 % 2013-04-05
 
+\newcommand{\coloredformula}[1]{\colorbox{blue!50}{$ #1 $}}
+
 # Why subcorpura
 
 # Size of subcorpura - Goal
@@ -18,6 +20,7 @@ In T subcorpus , we want
 - $T \cdot p(1)$ 1-sentence subcorpus, which covers $N \cdot C $ sentences
 - $T \cdot p(2)$ 2-sentence subcorpus, which covers $N \cdot C $ sentences
 - ...
+- \coloredformula{ 1 + 1 = 2 }
 
 # Size of subcorpura - Modelling
 
@@ -41,7 +44,6 @@ or, simply $p(k) \propto \dfrac{-1}{k \ln{(1-\frac{k}{N})} } $
 
 hello
 
-\begin{CJK}{UTF8}{min}日本語\end{CJK}
 
     #!/bin/sh
     a
