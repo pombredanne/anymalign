@@ -9,21 +9,38 @@ markdown = FileList[ '*.markdown' ]
 conf     = FileList[ "Rakefile"   ]
 source = markdown + template + conf
 
+def error(string)
+  puts [
+    "#"*50,
+    "\n",
+    ">"*5,
+    string,
+    "\n",
+    "#"*50,
+  ].join""
+end
 
 def pandoc(*args)
   sh "pandoc",*args
 rescue
+  error "error running pandoc with #{args.inspect}"
 end
+
 
 def pdflatex(pdf,tex)
   begin
     sh "pdflatex",                            \
-      "-interaction",'nonstopmode',           \
+      "-interaction",'batchmode',             \
       "-jobname", File.basename(pdf,'.pdf'),  \
       "--output-directory=#{TEMP_DIR}",tex
   rescue
+    error "error generating #{pdf}"
   end
-  mv "#{TEMP_DIR}/#{pdf}", pdf
+  begin
+    mv "#{TEMP_DIR}/#{pdf}", pdf
+  rescue
+    error "error moving #{pdf}"
+  end
 end
 
 tex = {
@@ -81,4 +98,4 @@ end
 desc "generate all pdf files"
 task :all => [:pdf_outline, :pdf_beamer]
 
-task :default => [:all, :clean]
+task :default => [:all]
