@@ -16,12 +16,14 @@ rescue
 end
 
 def pdflatex(pdf,tex)
-  sh "pdflatex",                            \
-    "-interaction",'batchmode',             \
-    "-jobname", File.basename(pdf,'.pdf'),  \
-    "--output-directory=#{TEMP_DIR}",tex
+  begin
+    sh "pdflatex",                            \
+      "-interaction",'nonstopmode',           \
+      "-jobname", File.basename(pdf,'.pdf'),  \
+      "--output-directory=#{TEMP_DIR}",tex
+  rescue
+  end
   mv "#{TEMP_DIR}/#{pdf}", pdf
-rescue
 end
 
 tex = {
@@ -44,7 +46,7 @@ task :tex_beamer => source do
     pandoc                    \
       "-t","beamer+raw_tex",  \
       "--template=cjk",       \
-        md,"-o",beamer
+      md,"-o",beamer
   end
 end
 
@@ -64,7 +66,7 @@ task :tex_outline => source do
     pandoc                    \
       "-t","latex+raw_tex",  \
       "--template=cjk",       \
-        md,"-o",beamer
+      md,"-o",beamer
   end
 end
 
