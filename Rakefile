@@ -15,7 +15,7 @@ def xelatex(tex_file,*options)
   pdf_file = pdf_for(tex_file)
   sh(*[
      "xelatex",
-     '-shell-escape',
+     #'-shell-escape',
      "-interaction",'batchmode',
      "--output-directory=#{TEMP_DIR}",
      tex_file
@@ -40,4 +40,11 @@ task :beamer do
   end
 end
 
+task :watch do
+  loop do
+    Rake::Task[:beamer].invoke
+    puts "sleeping @#{Time.now}"
+    sleep 1
+  end
+end
 task :default => [:beamer, :autoclean]

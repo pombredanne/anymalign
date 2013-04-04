@@ -16,20 +16,19 @@
   \end{frame}
 
   \begin{frame}
-    \frametitle{workflow of anymalign}
+    \frametitle{Workflow of anymalign}
     \begin{algorithmic}
       \Repeat
         \begin{description}
-          \item[sample] randomly pick a small subcorpora
-          \item[dig]    find alignment from subcorpora
+          \item[sample] randomly pick a small subcorpus
+          \item[find]   look for alignments from subcorpus
         \end{description}
-      \\
       \Until
-        \begin{itemize}
-          \item generation rate of new alignments fall below threshold
-          \item OR someone hit Ctrl-C
-        \end{itemize}
-      \\\ \\
+        \begin{description}
+          \item[enough] generation rate of new alignments falls below threshold
+          \item[or]
+          \item[interrupted] by Ctrl-C
+        \end{description}
       \Return
         \begin{itemize}
           \item translation probability
@@ -39,96 +38,225 @@
   \end{frame}
 }
 
+\section{finding alignments}{
+
+  \begin{frame}
+    \frametitle{Perfect alignment - definition}
+    \begin{description}
+      \item[perfect alignment] \ \\
+        words that have the same occurance vector.
+    \end{description}
+    \begin{itemize}
+      \item scarce
+        \\ \hspace{2em} in {\Large large} corpus
+        \\ \hspace{2em} mostly hapaxes
+      \item plentiful
+        \\ \hspace{2em}in {\small small} corpus
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Perfect alignment - example}
+
+    consider this alingual corpus: \\
+    \vspace{0.5em}
+
+    \hspace{10pt}
+    \begin{tabular}{r | l }
+      linenum & sentence \\
+      \hline
+      1 & we are cool .
+      \\
+      2 & are not we cool ?
+      \\
+      3 & agreed , we are surely cool .
+      \\
+    \end{tabular}
+    % we     <1,1,1>
+    % are    <1,1,1>
+    % cool   <1,1,1>
+
+    % .      <1,0,1>
+
+    % not    <0,1,0>
+    % ?      <0,1,0>
+
+    % ,      <0,0,1>
+    % argeed <0,0,1>
+    % really <0,0,1>
+
+    \vspace{2em}
+    we classify words by their occurance vector: \\
+
+    \vspace{0.5em}
+    \hspace{10pt}
+    \begin{tabular}{r | l }
+      vector & set of words \\
+      \hline
+      $<1,1,1>$ & \{ \inl{we}, \inl{are}, \inl{cool} \}
+      \\
+      $<0,0,1>$ & \{ \inl{,} , \inl{agreed}, \inl{surely} \}
+      \\
+      $<1,0,1>$ & \{ \inl{.} \}
+      \\
+      $<0,1,0>$ & \{ \inl{?}, \inl{not} \}
+      \\
+    \end{tabular}
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Perfect alignment - what are they ? }
+
+    \begin{description}
+      \item[in alingual corpus] \ \\
+        `just some particular case of collocations` \\
+        --- \fullcite{lardilleux-lepage:2009:RANLP09}
+        \vspace{1em}
+      \item[in multilingual corpus] \ \\
+        still collocations of course, \\
+        and likely to be  phrases that translates to each other
+    \end{description}
+
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Perfect alignment - align as alingual}
+
+    To find translation candidates using perfect alignments
+    \begin{description}
+      \item[merge]
+        concatenate aligned sentences into one \\
+        { \small ※ a.k.a `remove boundary of input languages` } \\
+        { \small ※ same literal from different languages are still counted as different words }
+      \item[find] prefect alignments from the looooooooong sentence,
+        and yield
+        \begin{itemize}
+          \item perfect alignments
+          \item complementary of perfect alignments
+        \end{itemize}
+        as aligned words.
+          % - perfect alignments themselves, \\
+          % - bb \\
+        %rest of 
+        % perfect alignments,
+        % as if they were from an alingual sentence
+      \item[split]
+        put boundary of languages back into aligned words,
+        and (hopefully) get aligned phrases.
+    \end{description}
+  \end{frame}
+
+  \begin{frame}
+    \frametitle{Perfect alignment - give me more }
+    reminder:
+    \begin{itemize}
+      \item scarce in {\Large large} corpus
+      \item plentiful in {\small small} corpus
+    \end{itemize}
+    \vspace{1em}
+    \inl{\Rightarrow} pick subcorpura
+    \\ \hspace{2em} while biasing toward smaller ones
+  \end{frame}
+
+}
+
 \section{sampling}{
 
   \begin{frame}
-    \frametitle{Size of subcorpura - Goal}
-    We demand the same cover rate, from subcorpus of different size. \\
-    suppose
+    \frametitle{Sampling - Modelling}
+    We assume the same cover rate, from subcorpura of different size. \\
+    let
     \begin{description}
       \item[$C$]     the cover rate
       \item[$N$]     size of corpus
-      \item[$T$]     num of samples ( aka subcorpus )
-      \item[$p(k)$]  probability that a corpora has size k
+      \item[$T$]     num of samples ( a.k.a subcorpura )
+      \item[$p(k)$]  probability that a corpus has size k
     \end{description}
     ideally, we have
     \begin{itemize}
-      \item \inl{T \cdot p(1)} 1-sentence subcorpus covers \inl{N \cdot C} sentences
-      \item \inl{T \cdot p(2)} 2-sentence subcorpus covers \inl{N \cdot C} sentences
+      \item \inl{T \cdot p(1)} 1-sentence subcorpura covers \inl{N \cdot C} sentences
+      \item \inl{T \cdot p(2)} 2-sentence subcorpura covers \inl{N \cdot C} sentences
       \item $ ... $
     \end{itemize}
   \end{frame}
 
-  \begin{frame} \frametitle{Size of subcorpura - Modelling}
+  \begin{frame} \frametitle{Sampling - Modelling}
     After \inl{T \cdot p(k)} k-sentence subcorpus are randomly picked,
-    \\
-    the probability that a particular sentence \em{is not covered} is
+    \\ \  \\
+    the probability that a particular sentence {\bf is not covered} is
     \\
     \inl{ ( (1-k/N)^k )^{ T \cdot p(k) } }
     , which equals to \inl{1-C}
   \end{frame}
 
-  \begin{frame} \frametitle{Size of subcorpura - Conclusion}
+  \begin{frame} \frametitle{Sampling - Conclusion}
     From \inl{((1-k/N)^k)^{ T \cdot p(k) } = 1 - C}
     \\
-    we can obtain \inl{p(k) = \dfrac{ \ln{(1-C)} }{kT \ln{(1-\frac{k}{N})}} }
+    we can obtain \inl{p(k) = \dfrac{ \ln{(1-C)} }{kT \ln{1 - k/N}} }
     \\
-    OR, simply \inl{p(k) \propto \dfrac{-1}{k \ln{(1-\frac{k}{N})} } }  ( -1 keeps it positive )
+    OR, simply \inl{p(k) \propto \dfrac{-1}{k \ln{(1-k/N)} } }  ( -1 keeps it positive ),
+    \\
+    \vspace{2em}
+    which fits our needs well.
   \end{frame}
 
 }
 
-\section{finding alignments}{
+\section{yield}{
 
   \begin{frame}
-    \frametitle{Perfect alignment}
-    def:
-    \\
-    perfect alignment:
-    \\
-    word sequences that ex
-    % TODO example with \tabular
+    \frametitle{Translation probability}
+    As its multilingual nature, TPs are given in {\em one-to-many} manner. \\
+    Each language becomes {\em source} in turn, all the rest being {\em target}.
+
+    \vspace{0.5em}
+    If
+    \begin{tabular}{ r | r | r | l }
+      en      & zh   & ja   & count \\
+      \hline
+      table & 桌子 & テーブル & 2 \\
+      table & 表格 & 表 & 1 \\
+    \end{tabular}
+    are the alignments we found, \\
+    \vspace{1em}
+    corresonding TP can be calculated by \\
+    \begin{tabular}{ r | r | l }
+      target & source & translation probability \\
+      \hline
+      \small{桌子,テーブル} & table & $ \frac{2}{1+2}  $ \\
+      \small{表格,表} & table & $ \frac{1}{1+2}  $ \\
+      \small{table,桌子} & テーブル & $ \frac{2}{2}  $ \\
+      \small{table,表格} & 表 & $ \frac{1}{1}  $ \\
+      ... & & \\
+    \end{tabular}
   \end{frame}
 
   \begin{frame}
-    \frametitle{Multilingual to Alingual}
-    remove boundary of input languages temporialy.
-    \\
-    note: same literal from different languages are counted as different words
-    def:
-    perfect alignment:
-    \\
-    word sequences that appears
-  \end{frame}
+    \frametitle{Lexical weight}
+    Similarily, LWs are computed in {\em one-to-many} manner. \\
 
-  \begin{frame}
-    \frametitle{Grouping words}
-  \end{frame}
-}
+    \ \\
+    As anymalign did not give word-to-word TPs by far,
+    we have to estimate them by counting: \inl{ D(word_i|word_j) = \frac{count(word_i,word_j)}{count(word_j)} } \\
 
-\section{calculation TP,LW}{
-
-  \begin{frame}
-    \frametitle{TP}
-  \end{frame}
-
-  \begin{frame}
-    \frametitle{LW}
+    \ \\
+    Then, lexical weight of
+    \inl{ t_1, t_2, ... \leftarrow s }
+    are product of
+    \inl{ D(\texttt{word in t} | \texttt{word in s} ) }
+    that maximizes the weight, namely \\
+    \ \\
+    \inl{
+      LW( t_1, t_2 ... | s ) = \prod_{w_j \in s}{\max_{w_i \in t }D(w_i|w_j) }
+    }
   \end{frame}
 }
 
 \section{copy&paste}{
-  \begin{frame}
-    \frametitle{title}
-    \begin{itemize}
-      \item Hello
-      \item World
-    \end{itemize}
-    \begin{description}
-      \item[a] def-a
-      \item[b] def-b
-    \end{description}
-  \end{frame}
+\begin{frame}
+  \frametitle{it's over}
+  thank you
+\end{frame}
 }
 
 \end{document}
