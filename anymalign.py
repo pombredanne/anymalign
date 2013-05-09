@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 # Copyright 2008, 2009, 2010, 2011 Adrien Lardilleux
@@ -41,7 +41,7 @@ from operator import mul
 from bisect import bisect_left
 
 
-__version__ = '2.5 (May 4th 2011)'
+__version__ = '2.5.x.1 (2013-05-09)'
 __author__ = 'Adrien Lardilleux <Adrien.Lardilleux@limsi.fr>'
 __scriptName__ = 'anymalign'
 __verbose__ = False
@@ -761,7 +761,7 @@ class Aligner:
     
     """
 
-    def __init__(self, inputFilenames, writer, nbNewAlignments, maxNbLines,
+    def __init__(self, inputFilenames, writer, nbNewAlignments, nbSubcorpora, maxNbLines,
                  timeout, doLexWeight, discontiguousFields, minLanguages,
                  minSize, maxSize, delimiter, indexN):
         """Initializer.
@@ -776,6 +776,8 @@ class Aligner:
         -- writer: {Plain,Moses,HTML,TMX}Writer
         -- nbNewAlignments: int
             The "-a" command line option value.
+        -- nbSubcorpora: int
+            The "-s" command line option value.
         -- maxNbLines: int
             The "-S" command line option value.
         -- timeout: float
@@ -879,7 +881,7 @@ class Aligner:
                                                   nbCorpToDo)))]
                 selection.sort()    # Speed up disk access
                 self.set_corpus(selection)
-                self.run(timeout, nbNewAlignments)
+                self.run(timeout, nbNewAlignments, nbSubcorpora)
             set_proba(self.weightedAlignmentFile, self.counts, writer)
         finally:
             self.weightedAlignmentFile.close()
@@ -989,7 +991,7 @@ class Aligner:
         #return 1
 
 
-    def run(self, timeout, nbNewAlignments):
+    def run(self, timeout, nbNewAlignments, nbSubcorpora):
         """Extract alignments from subcorpus loaded into memory.
 
         -- timeout: float
@@ -997,6 +999,8 @@ class Aligner:
             if not all-in-memory).
         -- nbNewAlignments: int
             The "-a" command line argument.
+        -- nbSubcorpora: int
+            The "-s" command line argument.
         """
         nbLines = len(self.corpus)
         if nbLines > 2: # Speed up by not using subcorpora of size 1 or nbLines
@@ -1027,6 +1031,8 @@ class Aligner:
         try:
             try:
                 while speed > nbNewAlignments:
+                    if -1 < nbSubcorpora <= nbSubcorporaDone:
+                        break
                     t = time()
                     if timeout is not None and t - startTime >= timeout:
                         break
@@ -1429,6 +1435,10 @@ temporary files. Default is OS dependant.""")
 
     alterGroup = optparse.OptionGroup(parser,
                                       "Options to alter alignment behaviour")
+    alterGroup.add_option('-s', '--subcorpora', dest='nb_subcorpora', type='int',
+                      default=-1, help="""Stop alignment when total number of
+subcorpura reaches NB_SUBCORPORA. Specify -1 to run
+indefinitely. [default: %default]""")
     alterGroup.add_option('-a', '--new-alignments', dest='nb_al', type='int',
                       default=-1, help="""Stop alignment when number of
 new alignments per second is lower than NB_AL. Specify -1 to run
@@ -1535,7 +1545,7 @@ format. Possible values are "plain", "moses", "html", and "tmx".
             parser.error(
                 "-i option value should not be greater than that of -N")
         
-        Aligner(args, writer, options.nb_al, options.nb_sent, options.nb_sec,
+        Aligner(args, writer, options.nb_al, options.nb_subcorpora, options.nb_sent, options.nb_sec,
                 options.weight, options.fields, options.nb_lang, options.min_n,
                 options.max_n, options.delim, options.index_n)
 
