@@ -167,170 +167,6 @@ def optimum_array(initialList, maxi=None):
             return array(typecode, initialList)
     return tuple(initialList)
 
-class Sampler():
-    # base sampler class
-    # child class should implement these methods:
-    #   set_corpus( self, corpus, allwordIds, wordLanguages ):
-    #   => None
-    #   def sample( subcorpus_size ):
-    #   => [ lineNo ] array for subcorpus
-    def __init__(self, bias_corpus ):
-        # a file stream for test sentences
-        self.bias_corpus = bias_corpus
-
-    def set_corpus( self, corpus, allwordIds, wordLanguages, wordFreq ):
-        # corpus:       [ lineId : [ wordId for each word] ]
-        # allWordIds:   [ langId : { word: wordId } ]
-        # wordLanguages:[ wordId : lang_id ]
-        # wordFreq : [ wordId : occurances ]
-        raise NotImplementedError
-
-    def convert_bias_corpus( bias_corpus_raw, monolingual_words ):
-        bias_corpus_converted = []
-        for line in bias_corpus_raw:
-            line_converted = [
-                monolingual_words[word]
-                for word in line.split()
-                if word in monolingual_words
-                ]
-            for word in line.split():
-        return bias_corpus_converted
-
-    def sample( subcorpus_size ):
-        # return [ lineNo ]
-        raise NotImplementedError
-
-    # common
-    def weight_mean_IDF( fullCorpus, bias_corpus ):
-        # return {
-        #   lineNo : weight
-        #   for lineNo in range(len(fullCorpus)) }
-
-        # weight : mean of idfScore for word that occurs in both fullCorpus and bias_corpus
-
-        bias_corpus_occurance = defaultdict(int)
-        # { wordId : occurance
-        #   for wordId in bias_corpus )
-        for line in bias_corpus:
-            for word in set(line):
-                bias_corpus_occurance[word] += 1
-
-        ret = []
-        for sentence in fullCorpus:
-            weight = sum([
-                self.idfScore[word]
-                for word in sentence
-                if word in bias_corpus_occurance]) / len(sentence)
-            ret.append( weight )
-
-class FairSampler(Sampler):
-    def set_corpus( self, corpus, allwordIds, wordLanguages, wordFreq ):
-        self.numCorpus = len(corpus)
-
-    def sample( subcorpus_size ):
-        return random.sample( xrange( self.numCorpus ), subcorpus_size )
-
-class Wang1Sampler(Sampler):
-    # calculate weight on target side at first
-    def set_corpus( self, corpus, allWordIds, wordLanguages, wordFreq ):
-
-        self.idfScore = {
-                wordId : math.log( len(wordFreq) / wordFreq[wordId] )
-                for wordId in xrange(len(wordFreq))
-                }
-
-        WordIds_lang1 = allwordIds[0]
-
-        bias_corpus = self.convert_bias_corpus(
-                self.bias_corpus.xreadlines()
-                , WordIds_lang1
-                )
-
-        weight_pass1 = self.weight( fullCorpus, bias_corpus )
-
-        threshold = 0.5 # average idf score
-        # TODO find a good thershould
-
-        counterpart = [
-                # [ [wordId] ]
-                [ wordId
-                    for wordId in fullCorpus[lineNo]
-                    if wordLanguages[wordId] == 1
-                ]
-            for lineNo, weight in weight_pass1
-            if weight > 0.5
-            ]
-        weight_pass2 = self.weight( fullCorpus , counterpart )
-        self.distribution = Distribution(
-                lambda lineNo:( weight_pass2[lineNo] ),
-                0,
-                len( fullCorpus ) - 1
-                )
-
-    def sample( subcorpus_size ):
-        # return set(lineNo)
-        ret = set()
-        while len(ret) < subcorpus_size:
-            ret.add( self.distribution.next() )
-
-class Wang2Sampler(Sampler):
-    # biased sampling on source side
-    # then use the result to bias sampling on target side
-    # TODO
-    def set_corpus( self, corpus, allWordIds, wordLanguages, wordFreq ):
-        self.idfScore = {
-                wordId : math.log( len(wordFreq) / wordFreq[wordId] )
-                for wordId in xrange(len(wordFreq))
-                }
-
-        WordIds_lang1 = allwordIds[0]
-        bias_corpus = self.convert_bias_corpus(
-                self.bias_corpus.xreadlines()
-                , WordIds_lang1
-                )
-
-        weight_source = {
-                }
-        self.distribution_source = Distribution(
-                lambda lineNo: weight_source[lineNo]
-                0,
-                len(corpus)
-                )
-
-    def sample( subcorpusSize ):
-        # sample on source language side
-        # TODO how many to take on source side?
-        sampled_source = []
-
-        # sample on target 
-        distribution = Distribution(
-                # TODO
-                )
-        ret = set()
-        while len(ret) < subcorpusSize:
-            ret.add( distribution.next() )
-
-class LeeSampler(Sampler):
-    pass
-
-def SamplerFactory( sampler_type, filename ):
-    # sampler_type:
-    #   None|'fair' => FairSampler
-    #   'lee'       => LeeSampler
-    #   'wang1'     => Wang1Sampler
-    #   'wang2'     => Wang2Sampler
-    #   filename:
-    #   text file that contains sentences OF FIRST LANGUAGE to bias toward
-    if sampler_type=='fair' or not sampler_type:
-        return FairSampler( [] )
-    elif sampler_type=='lee':
-        return LeeSampler( open_compressed( filename ).readlines() )
-    elif sampler_type=='wang1':
-        return Wang1Sampler( open_compressed( filename ).readlines() )
-    elif sampler_type=='wang2':
-        return Wang2Sampler( open_compressed( filename ).readlines() )
-    else:
-        raise "invalid sampler_type"
 
 class CoocDB:
     """Container for word cooccurrence counts.
@@ -925,7 +761,7 @@ class Aligner:
     
     """
 
-    def __init__(self, inputFilenames, writer, nbNewAlignments, nbSubcorpora, sampler, maxNbLines,
+    def __init__(self, inputFilenames, writer, nbNewAlignments, nbSubcorpora, maxNbLines,
                  timeout, doLexWeight, discontiguousFields, minLanguages,
                  minSize, maxSize, delimiter, indexN):
         """Initializer.
@@ -942,8 +778,6 @@ class Aligner:
             The "-a" command line option value.
         -- nbSubcorpora: int
             The "-s" command line option value.
-        -- sampler
-            Sampler object specified by '-b', '-B' switch
         -- maxNbLines: int
             The "-S" command line option value.
         -- timeout: float
@@ -978,7 +812,6 @@ class Aligner:
         self.nbAlignments = 0   # = sum(len(c) for c in self.counts)
         self.files = []
         self.weightedAlignmentFile = make_temp_file(".al_lw")
-        self.sampler = sampler
         try:
             for f in inputFilenames:
                 if f == "-":
@@ -1112,8 +945,6 @@ class Aligner:
         self.wordFreq.sort(reverse=True)
         self.wordFreq = optimum_array(self.wordFreq)
 
-        self.sampler.set_corpus( self.wordId, self.wordFreq, self.corpus, self.wordFreq )
-
         ### new with -i option ###
         # Store multiple n-gram-ized copies of the corpus to speed up
         # subsequent alignment phase. That's memory intensive, but
@@ -1230,7 +1061,7 @@ class Aligner:
                     
                     nbSubcorporaDone += 1
                     subcorporaDoneSum += subcorpusSize
-                    self.align( self.sampler.sample( subcorpusSize ),
+                    self.align(random.sample(xrange(nbLines), subcorpusSize),
                                tmpFile)
             except KeyboardInterrupt:
                 toWrite = "(%i subcorpora, avg=%.2f) Alignment interrupted! " \
@@ -1628,10 +1459,6 @@ NB_SEC seconds elapsed. Specify -1 to run indefinitely. [default:
     alterGroup.add_option('-w', '--weight', default=False, action='store_true',
                       help="""Compute lexical weights (requires
 additional computation time and memory).""")
-    alterGroup.add_option('-b', '--bias-type', dest='bias_type', default=None, action='store',
-                      help="""bias type""")
-    alterGroup.add_option('-B', '--bias-corpus', dest='bias_corpus', default=None, action='store',
-                      help="""sentences of FIRST language to bias toward""")
     parser.add_option_group(alterGroup)
 
     filteringGroup = optparse.OptionGroup(parser, "Filtering options")
@@ -1701,7 +1528,6 @@ format. Possible values are "plain", "moses", "html", and "tmx".
     else:
         parser.error("Unknown output format for option -o")
 
-    sampler = SamplerFactory( options.bias_type, options.bias_corpus )
     if options.merge:
         merge(args, writer)
     else:
@@ -1719,7 +1545,7 @@ format. Possible values are "plain", "moses", "html", and "tmx".
             parser.error(
                 "-i option value should not be greater than that of -N")
         
-        Aligner(args, writer, options.nb_al, options.nb_subcorpora, sampler, options.nb_sent, options.nb_sec,
+        Aligner(args, writer, options.nb_al, options.nb_subcorpora, options.nb_sent, options.nb_sec,
                 options.weight, options.fields, options.nb_lang, options.min_n,
                 options.max_n, options.delim, options.index_n)
 
