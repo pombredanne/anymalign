@@ -744,6 +744,13 @@ class Aligner:
     -- self.weightFunc: function
         {self._dummy_weight|self._lexical_weight}, according to
         "-w" command line flag.
+    -- self.sampleDist: Distribution
+        A Distribution object to sample from training corpus.
+        self.sampleDist.next() returns a integer lineNo.
+        The probability of being sampled is specified in a text file F:
+        k-th line F should contain a probability (in float number, not necessarily normalized ),
+        which corresponds to line k in training corpus,
+        The filename of F is specified by "-p" command line option.
 
     Main process is as follows:
     1) Read all input files, keep only line start offsets in memory;
@@ -763,7 +770,7 @@ class Aligner:
 
     def __init__(self, inputFilenames, writer, nbNewAlignments, nbSubcorpora, maxNbLines,
                  timeout, doLexWeight, discontiguousFields, minLanguages,
-                 minSize, maxSize, delimiter, indexN):
+                 minSize, maxSize, delimiter, indexN, sampleDist = None):
         """Initializer.
 
         Main process is coded in initializer. That's not very clean, but
@@ -796,6 +803,8 @@ class Aligner:
             The "-d" command line option value.
         -- indexN: int
             The "-i" command line option value.
+        -- sampleDist : Distribution
+                The "-p" command line option value.
         """
         self.minSize = minSize
         self.maxSize = maxSize
@@ -812,6 +821,7 @@ class Aligner:
         self.nbAlignments = 0   # = sum(len(c) for c in self.counts)
         self.files = []
         self.weightedAlignmentFile = make_temp_file(".al_lw")
+        self.sampleDist = sampleDist
         try:
             for f in inputFilenames:
                 if f == "-":
@@ -1061,8 +1071,15 @@ class Aligner:
                     
                     nbSubcorporaDone += 1
                     subcorporaDoneSum += subcorpusSize
-                    self.align(random.sample(xrange(nbLines), subcorpusSize),
-                               tmpFile)
+
+                    if self.sampleDist:
+                        subcorpus = set()
+                        while len(subcorpus) < subcorpusSize:
+                            subcorpus.add( self.sampleDist.next() )
+                    else:
+                        subcorpus = random.sample( xrange(nbLines), subcorpusSize )
+
+                    self.align( subcorpus, tmpFile)
             except KeyboardInterrupt:
                 toWrite = "(%i subcorpora, avg=%.2f) Alignment interrupted! " \
                           "Proceeding..." % (nbSubcorporaDone,
@@ -1437,8 +1454,15 @@ temporary files. Default is OS dependant.""")
                                       "Options to alter alignment behaviour")
     alterGroup.add_option('-s', '--subcorpora', dest='nb_subcorpora', type='int',
                       default=-1, help="""Stop alignment when total number of
-subcorpura reaches NB_SUBCORPORA. Specify -1 to run
+subcorpora reaches NB_SUBCORPORA. Specify -1 to run
 indefinitely. [default: %default]""")
+    alterGroup.add_option('-p', '--prob-file', dest='prob_file',
+            default=None, help="""Bias sampling of subcorpora:
+            Instead of sampling training corpus at equal probability,
+            use a file to specify the probability of being sampled into subcorpora.
+            The file should contain as many lines as training corpus.
+            Its k-th line contains a non-negative float number, for the probability of k-th line in corpus.
+            These float numbers do not have to be normalized.""")
     alterGroup.add_option('-a', '--new-alignments', dest='nb_al', type='int',
                       default=-1, help="""Stop alignment when number of
 new alignments per second is lower than NB_AL. Specify -1 to run
@@ -1516,6 +1540,13 @@ format. Possible values are "plain", "moses", "html", and "tmx".
     if 'psyco' in globals():
         message("Using psyco module\n")
 
+    if options.prob_file:
+        # convert lines in prob_file to a list of float
+        prob_list = map(float,open(options.prob_file).readlines())
+        sampleDist = Distribution( prob_list.__getitem__, 0, len(prob_list)-1 )
+    else:
+        sampleDist = None
+
     format = options.format.lower()
     if "plain".startswith(format):
         writer = PlainWriter(sys.stdout)
@@ -1547,7 +1578,7 @@ format. Possible values are "plain", "moses", "html", and "tmx".
         
         Aligner(args, writer, options.nb_al, options.nb_subcorpora, options.nb_sent, options.nb_sec,
                 options.weight, options.fields, options.nb_lang, options.min_n,
-                options.max_n, options.delim, options.index_n)
+                options.max_n, options.delim, options.index_n, sampleDist=sampleDist)
 
 
 if __name__ == '__main__':
