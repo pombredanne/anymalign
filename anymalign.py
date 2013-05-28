@@ -38,10 +38,10 @@ import math
 import random
 from array import array
 from operator import mul
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 
 
-__version__ = '2.5.x.1 (2013-05-09)'
+__version__ = '2.5.x.2 (2013-05-29)'
 __author__ = 'Adrien Lardilleux <Adrien.Lardilleux@limsi.fr>'
 __scriptName__ = 'anymalign'
 __verbose__ = False
@@ -297,11 +297,9 @@ class Distribution:
         """Return new random integer, according to distribution."""
         r = random.random()
         values = self.values
-        i = -1
-        for i in xrange(self.nbVal):
-            if r < values[i]:
-                return self.start + i
-        return self.start + i    # We should never reach this line
+        i = bisect_right( values, r  )
+        # still "first i such that r < values[i]"
+        return self.start + i
 
 
 ###############################################################################
